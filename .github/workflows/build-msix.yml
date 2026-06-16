@@ -35,8 +35,9 @@ jobs:
         run: npm run build:renderer
 
       # 1) The .exe installer for testing on your own laptop. Must succeed.
+      # --publish never: just build the file, do not auto-upload to a GitHub Release.
       - name: Build .exe installer (NSIS)
-        run: npx electron-builder --win nsis
+        run: npx electron-builder --win nsis --publish never
 
       - name: Upload .exe
         uses: actions/upload-artifact@v4
@@ -48,7 +49,7 @@ jobs:
       # so it is allowed to fail without blocking the .exe artifact above.
       - name: Build MSIX (Store)
         continue-on-error: true
-        run: npx electron-builder --win appx
+        run: npx electron-builder --win appx --publish never
 
       - name: Upload MSIX
         uses: actions/upload-artifact@v4
