@@ -3,7 +3,7 @@ export type Config = { username: string; instance: string; tokenSaved: boolean; 
 export type RunResult = { ok: boolean; stdout: string; stderr: string; missing?: string }
 export type SaveResult = { ok: boolean; verified: boolean; error: string; config: Config }
 export type Stats = { local: { programsRun: number; lastRun?: string }; cfg: any; remote: any }
-export type HistoryItem = { t: string; target: string; ok: boolean; title: string }
+export type HistoryItem = { t: string; target: string; ok: boolean; title: string; code?: string; output?: string }
 
 const w = window as any
 const native = w.summit

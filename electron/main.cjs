@@ -102,6 +102,55 @@ function runPython(args, { stdin, timeoutMs, env } = {}) {
   })
 }
 
+// The matplotlib font cache is built at BUILD time and shipped; copy it to a writable
+// folder once so matplotlib never rebuilds it at run time.
+function mplCacheDir() { return path.join(userData(), 'mplcache') }
+function seedMplCache() {
+  try {
+    const dst = mplCacheDir()
+    if (fs.existsSync(dst)) return
+    const src = path.join(process.resourcesPath, 'python', 'mplcache')
+    if (fs.existsSync(src)) fs.cpSync(src, dst, { recursive: true })
+  } catch {}
+}
+
+// A single long-lived Python process keeps Qiskit and matplotlib imported, so runs are
+// fast after the first warm-up. One JSON line per request/response.
+function workerScript() { return isDev ? path.join(__dirname, 'worker.py') : path.join(process.resourcesPath, 'worker.py') }
+let worker = null, workerBuf = '', workerPending = new Map(), workerIdc = 0
+function spawnWorker() {
+  const env = {
+    ...process.env, MPLBACKEND: 'Agg', MPLCONFIGDIR: mplCacheDir(), QSUMMIT_PKGDIR: pkgDir(),
+    PYTHONPATH: pkgDir() + (process.env.PYTHONPATH ? path.delimiter + process.env.PYTHONPATH : ''),
+  }
+  try { worker = spawn(pythonPath(), [workerScript()], { windowsHide: true, env }) }
+  catch { worker = null; return }
+  worker.stdout.on('data', (d) => {
+    workerBuf += d.toString()
+    let i
+    while ((i = workerBuf.indexOf('\n')) >= 0) {
+      const line = workerBuf.slice(0, i); workerBuf = workerBuf.slice(i + 1)
+      if (!line.trim()) continue
+      let msg; try { msg = JSON.parse(line) } catch { continue }
+      if (msg.ready) continue
+      if (msg.id != null && workerPending.has(msg.id)) { const r = workerPending.get(msg.id); workerPending.delete(msg.id); r(msg) }
+    }
+  })
+  worker.stderr.on('data', () => {})
+  worker.on('exit', () => { worker = null; for (const [, r] of workerPending) r({ ok: false, stdout: '', stderr: 'The Python engine stopped. Please try again.' }); workerPending.clear() })
+}
+function ensureWorker() { if (!worker) spawnWorker() }
+function workerRun(code, ibmVars) {
+  ensureWorker()
+  if (!worker) return Promise.resolve({ ok: false, stdout: '', stderr: 'The Python engine could not start. The bundled environment may be missing.' })
+  return new Promise((resolve) => {
+    const id = String(++workerIdc)
+    workerPending.set(id, resolve)
+    try { worker.stdin.write(JSON.stringify({ id, code, env: { ...ibmVars, MPLBACKEND: 'Agg' } }) + '\n') }
+    catch { workerPending.delete(id); resolve({ ok: false, stdout: '', stderr: 'Could not reach the Python engine.' }) }
+  })
+}
+
 function createWindow() {
   const lf = logoFile()
   const win = new BrowserWindow({
@@ -131,10 +180,13 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
+  seedMplCache()
+  ensureWorker()   // warm up Python in the background so the first run is fast
   createWindow()
   createTray()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
+app.on('before-quit', () => { try { if (worker) worker.stdin.write('{"cmd":"quit"}\n') } catch {} })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 
 ipcMain.handle('config:get', () => {
@@ -160,21 +212,21 @@ ipcMain.handle('run', async (_e, { code }) => {
   const cfg = readJson(cfgPath(), {})
   // Choosing IBM hardware without a saved key must fail loudly, not silently run local.
   if (/QiskitRuntimeService/.test(code) && !cfg.tokenSaved) {
-    return { ok: false, stdout: '', stderr: 'This program runs on IBM Quantum, but no API key is configured.\nOpen Configuration and save your IBM Quantum API key first.' }
+    return { ok: false, stdout: '', stderr: 'This program runs on IBM Quantum, but no API key is configured.\nOpen Configuration and save your IBM Quantum API key first.', missing: '' }
   }
-  const file = path.join(app.getPath('temp'), `summit_${Date.now()}.py`)
-  fs.writeFileSync(file, code, 'utf8')
-  const env = ibmEnv()
-  env.MPLBACKEND = 'Agg'  // matplotlib runs headless so plotting code does not crash
-  const res = await runPython([file], { env })
-  try { fs.unlinkSync(file) } catch {}
-  // If a package is missing, surface its name so the UI can offer to install it.
-  const mm = /ModuleNotFoundError: No module named '([^']+)'/.exec(res.stderr || '')
-  res.missing = mm ? mm[1].split('.')[0] : ''
+  const ibmVars = {}
+  if (cfg.tokenSaved) {
+    const tok = decryptToken(cfg)
+    if (tok) { ibmVars.QISKIT_IBM_TOKEN = tok; ibmVars.QISKIT_IBM_CHANNEL = 'ibm_quantum_platform'; if (cfg.instance) ibmVars.QISKIT_IBM_INSTANCE = cfg.instance }
+  }
+  const res = await workerRun(code, ibmVars)
   const s = readJson(statsPath(), { programsRun: 0 }); s.programsRun = (s.programsRun || 0) + 1; s.lastRun = new Date().toISOString(); writeJson(statsPath(), s)
   const target = /QiskitRuntimeService/.test(code) ? 'IBM Quantum' : 'Local simulator'
   const title = (code.split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#') && !l.startsWith('from ') && !l.startsWith('import ')) || 'Program').slice(0, 70)
-  const h = readJson(histPath(), { items: [] }); h.items.unshift({ t: new Date().toISOString(), target, ok: res.ok, title }); h.items = h.items.slice(0, 200); writeJson(histPath(), h)
+  const output = ((res.stdout || '') + (res.stderr ? '\n' + res.stderr : '')).slice(0, 6000)
+  const h = readJson(histPath(), { items: [] })
+  h.items.unshift({ t: new Date().toISOString(), target, ok: res.ok, title, code: String(code).slice(0, 6000), output })
+  h.items = h.items.slice(0, 100); writeJson(histPath(), h)
   return res
 })
 

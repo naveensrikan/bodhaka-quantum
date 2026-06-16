@@ -1,22 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Terminal from './Terminal'
 import CanvasBuilder from './CanvasBuilder'
-
-const EXAMPLE = `from qiskit import QuantumCircuit, transpile
-from qiskit_aer import AerSimulator
-
-qc = QuantumCircuit(2)
-qc.h(0)
-qc.cx(0, 1)
-qc.measure_all()
-
-sim = AerSimulator()
-counts = sim.run(transpile(qc, sim), shots=1024).result().get_counts()
-print(counts)`
+import { LOCAL_EXAMPLE } from '../lib/examples'
 
 export default function Build() {
   const [mode, setMode] = useState<'terminal' | 'canvas'>('terminal')
-  const [code, setCode] = useState(EXAMPLE)
+  // Persist the program across screen switches and restarts.
+  const [code, setCode] = useState(() => {
+    try { return localStorage.getItem('summit.code') || LOCAL_EXAMPLE } catch { return LOCAL_EXAMPLE }
+  })
+  useEffect(() => { try { localStorage.setItem('summit.code', code) } catch {} }, [code])
 
   return (
     <div>
@@ -29,7 +22,7 @@ export default function Build() {
         </div>
       </div>
       {mode === 'terminal'
-        ? <Terminal code={code} setCode={setCode} example={EXAMPLE} />
+        ? <Terminal code={code} setCode={setCode} />
         : <CanvasBuilder onSend={(c) => { setCode(c); setMode('terminal') }} />}
     </div>
   )

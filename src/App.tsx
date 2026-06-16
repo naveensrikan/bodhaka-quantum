@@ -49,7 +49,8 @@ export default function App() {
           </div>
         </aside>
         <main className="main">
-          {page === 'build' && <Build />}
+          {/* Build stays mounted so a running program and its output survive screen switches. */}
+          <div style={{ display: page === 'build' ? 'block' : 'none' }}><Build /></div>
           {page === 'history' && <History />}
           {page === 'config' && <Configuration onShowNotice={() => setNotice('review')} />}
           {page === 'dashboard' && <Dashboard />}

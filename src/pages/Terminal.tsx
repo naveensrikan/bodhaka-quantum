@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { ipc } from '../lib/ipc'
+import { LOCAL_EXAMPLE, IBM_EXAMPLE } from '../lib/examples'
 
-export default function Terminal({ code, setCode, example }: { code: string; setCode: (c: string) => void; example: string }) {
+export default function Terminal({ code, setCode }: { code: string; setCode: (c: string) => void }) {
+  const [target, setTarget] = useState<'local' | 'ibm'>('local')
   const [out, setOut] = useState('')
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
   const [missing, setMissing] = useState('')
 
+  function switchTarget(t: 'local' | 'ibm') {
+    setTarget(t)
+    setCode(t === 'ibm' ? IBM_EXAMPLE : LOCAL_EXAMPLE)
+  }
+
   async function run() {
     setBusy(true); setOut('Running...'); setErr(false); setMissing('')
-    const r = await ipc.run(code, 'terminal')
+    const r = await ipc.run(code, target)
     setBusy(false)
     setErr(!r.ok)
     setMissing(r.missing || '')
@@ -27,11 +34,18 @@ export default function Terminal({ code, setCode, example }: { code: string; set
 
   return (
     <div className="term">
-      <p className="muted">Write or paste any Qiskit program. It runs exactly as written. Switch to Canvas to build a circuit visually, or open Configuration to connect real IBM hardware.</p>
+      <div className="term-head">
+        <p className="muted" style={{ margin: 0, flex: 1 }}>Write or paste any Qiskit program. Choose where it runs, then press Run.</p>
+        <div className="seg" data-mode={target === 'local' ? 'terminal' : 'canvas'}>
+          <button className={target === 'local' ? 'on' : ''} onClick={() => switchTarget('local')}>Local simulator</button>
+          <button className={target === 'ibm' ? 'on' : ''} onClick={() => switchTarget('ibm')}>IBM Quantum</button>
+          <span className="seg-knob" />
+        </div>
+      </div>
       <textarea className="editor" value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} />
       <div className="term-bar">
-        <button className="btn good" onClick={run} disabled={busy}>{busy ? 'Running...' : 'Run ▶'}</button>
-        <button className="btn soft" onClick={() => setCode(example)}>Reset example</button>
+        <button className="btn good" onClick={run} disabled={busy}>{busy ? 'Running...' : (target === 'ibm' ? 'Run on IBM Quantum ▶' : 'Run on simulator ▶')}</button>
+        <button className="btn soft" onClick={() => setCode(target === 'ibm' ? IBM_EXAMPLE : LOCAL_EXAMPLE)}>Reset example</button>
         {missing && <button className="btn" onClick={installAndRun} disabled={busy}>Install {missing} and run again</button>}
       </div>
       <div className={'output' + (err ? ' err' : '')}>{out || 'Output will appear here.'}</div>

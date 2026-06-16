@@ -14,9 +14,11 @@ extraResources:
   - from: resources/python
     to: python
     filter: ["**/*"]
-  # runner.py must live OUTSIDE app.asar so a real Python process can open it.
+  # runner.py and worker.py must live OUTSIDE app.asar so a real Python process can open them.
   - from: electron/runner.py
     to: runner.py
+  - from: electron/worker.py
+    to: worker.py
 win:
   target:
     - nsis    # produces a normal .exe installer you can run on your own laptop to test

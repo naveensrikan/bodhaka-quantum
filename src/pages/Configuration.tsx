@@ -61,7 +61,7 @@ export default function Configuration({ onShowNotice }: { onShowNotice: () => vo
           <label>Storage location</label>
           <div className="row">
             <input value={dir} readOnly style={{ flex: 1 }} />
-            <button className="btn soft" onClick={choose}>Change folder</button>
+            <button className="textbtn" onClick={choose}>Change folder</button>
           </div>
           <div className="hint">Where your settings and encrypted key are stored on this computer.</div>
         </div>
@@ -76,7 +76,7 @@ export default function Configuration({ onShowNotice }: { onShowNotice: () => vo
           <label>Install a Python package (advanced)</label>
           <div className="row">
             <input value={pkg} onChange={(e) => setPkg(e.target.value)} placeholder="e.g. pandas" style={{ flex: 1 }} />
-            <button className="btn soft" onClick={install} disabled={pkgBusy}>{pkgBusy ? 'Installing...' : 'Install'}</button>
+            <button className="textbtn" onClick={install} disabled={pkgBusy}>{pkgBusy ? 'Installing...' : 'Install'}</button>
           </div>
           <div className="hint">Qiskit, Aer, and matplotlib are already included. Use this to add other packages to the app's Python.</div>
           {pkgOut && <div className={'output' + (pkgErr ? ' err' : '')} style={{ marginTop: 10 }}>{pkgOut}</div>}

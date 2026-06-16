@@ -103,9 +103,9 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
       </div>
 
       <div className="card">
-        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 12 }}>
-          <label className="row" style={{ gap: 6 }}><input type="checkbox" checked={measureAll} onChange={(e) => setMeasureAll(e.target.checked)} /> measure_all</label>
-          <span className="link" onClick={() => { setOps([]); setOut('') }}>Clear</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><input type="checkbox" checked={measureAll} onChange={(e) => setMeasureAll(e.target.checked)} /> measure_all</label>
+          <button className="textbtn" onClick={() => { setOps([]); setOut('') }}>Clear</button>
         </div>
         <div className="row" style={{ gap: 16, marginBottom: 12 }}>
           <label className="row" style={{ gap: 6 }}><input type="radio" checked={target === 'local'} onChange={() => setTarget('local')} /> Local simulator</label>

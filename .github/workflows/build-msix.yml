@@ -30,6 +30,12 @@ jobs:
           tar -xzf py.tar.gz -C resources   # extracts to resources/python
           ./resources/python/python.exe -m pip install --upgrade pip
           ./resources/python/python.exe -m pip install qiskit qiskit-ibm-runtime qiskit-aer matplotlib pylatexenc
+          # Build caches now, at build time, so they ship inside the app and are never built at run time.
+          $env:MPLCONFIGDIR = "$PWD/resources/python/mplcache"
+          New-Item -ItemType Directory -Force "$env:MPLCONFIGDIR" | Out-Null
+          ./resources/python/python.exe -c "import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot; print('mpl cache built')"
+          ./resources/python/python.exe -c "import qiskit, qiskit_aer, qiskit_ibm_runtime; print('qiskit import ok')"
+          ./resources/python/python.exe -m compileall -q ./resources/python 2>$null; echo "bytecode compiled"
 
       - name: Build renderer
         run: npm run build:renderer
