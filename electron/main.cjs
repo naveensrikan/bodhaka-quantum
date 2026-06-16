@@ -6,9 +6,14 @@ const { spawn } = require('child_process')
 const isDev = !app.isPackaged
 let tray = null
 
-// The window/taskbar/tray icon. Uses logo.png shipped with the renderer.
+// The tray/window icon. Prefers the real logo.png file shipped as an extra resource
+// (outside app.asar), which nativeImage can always read.
 function logoFile() {
-  const candidates = [path.join(__dirname, '..', 'dist', 'logo.png'), path.join(__dirname, '..', 'public', 'logo.png')]
+  const candidates = [
+    path.join(process.resourcesPath, 'logo.png'),
+    path.join(__dirname, '..', 'public', 'logo.png'),
+    path.join(__dirname, '..', 'dist', 'logo.png'),
+  ]
   for (const p of candidates) { try { if (fs.existsSync(p)) return p } catch {} }
   return null
 }

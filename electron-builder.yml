@@ -19,6 +19,11 @@ extraResources:
     to: runner.py
   - from: electron/worker.py
     to: worker.py
+  # The logos as real files (outside asar) so the tray and dialogs load reliably.
+  - from: public/logo.png
+    to: logo.png
+  - from: public/bodhaka_logo.png
+    to: bodhaka_logo.png
 win:
   target:
     - nsis    # produces a normal .exe installer you can run on your own laptop to test
@@ -35,7 +40,9 @@ nsis:
 # The .exe does NOT need these; only the Store .appx does.
 appx:
   identityName: BuoyantWaveLearningTechnologiesLLP.BodhakaQuantumSummit
-  publisher: CN=REPLACE-WITH-YOUR-PARTNER-CENTER-PUBLISHER-ID
+  # Matches the self-signed certificate the CI workflow generates so the .msix can be
+  # sideloaded. For the Store, replace this with your Partner Center publisher ID.
+  publisher: CN=BuoyantWave Learning Technologies LLP
   publisherDisplayName: BuoyantWave Learning Technologies LLP
   applicationId: BodhakaQuantumSummit
   backgroundColor: "#DBE7F3"
