@@ -1,0 +1,6 @@
+node_modules/
+dist/
+release/
+resources/python/
+*.log
+.DS_Store

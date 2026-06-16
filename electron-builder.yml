@@ -1,0 +1,37 @@
+appId: org.bodhaka.quantumsummit
+productName: Bodhaka Quantum Summit
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**
+  - electron/**
+  - package.json
+# The GitHub Actions workflow populates resources/python with a standalone Python
+# plus qiskit + qiskit-ibm-runtime before the build. For a quick UI-only local build,
+# comment this block out.
+extraResources:
+  - from: resources/python
+    to: python
+    filter: ["**/*"]
+win:
+  target:
+    - nsis    # produces a normal .exe installer you can run on your own laptop to test
+    - appx    # produces the .msix/.appx for the Microsoft Store
+# Icons: drop build/icon.ico and build/icon.png into the repo and they are picked up
+# automatically. Until then electron-builder uses a default icon so the build still works.
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${productName}-${version}-setup.${ext}
+# Fill identityName / publisher from your Microsoft Partner Center reservation for
+# "Bodhaka Quantum Summit". publisher is the "Package/Identity/Publisher" CN string.
+# The .exe does NOT need these; only the Store .appx does.
+appx:
+  identityName: BuoyantWaveLearningTechnologiesLLP.BodhakaQuantumSummit
+  publisher: CN=REPLACE-WITH-YOUR-PARTNER-CENTER-PUBLISHER-ID
+  publisherDisplayName: BuoyantWave Learning Technologies LLP
+  applicationId: BodhakaQuantumSummit
+  backgroundColor: "#DBE7F3"
+  showNameOnTiles: true

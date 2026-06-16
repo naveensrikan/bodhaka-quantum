@@ -1,0 +1,58 @@
+name: Build app (.exe + MSIX)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Node dependencies
+        run: npm install
+
+      # Bundle a standalone Python plus Qiskit INSIDE the app, so the user never
+      # installs anything. Pin a current python-build-standalone "install_only" release.
+      - name: Bundle Python + Qiskit
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pyUrl = 'https://github.com/astral-sh/python-build-standalone/releases/download/20240814/cpython-3.12.5+20240814-x86_64-pc-windows-msvc-install_only.tar.gz'
+          Invoke-WebRequest $pyUrl -OutFile py.tar.gz
+          New-Item -ItemType Directory -Force resources | Out-Null
+          tar -xzf py.tar.gz -C resources   # extracts to resources/python
+          ./resources/python/python.exe -m pip install --upgrade pip
+          ./resources/python/python.exe -m pip install qiskit qiskit-ibm-runtime qiskit-aer
+
+      - name: Build renderer
+        run: npm run build:renderer
+
+      # 1) The .exe installer for testing on your own laptop. Must succeed.
+      - name: Build .exe installer (NSIS)
+        run: npx electron-builder --win nsis
+
+      - name: Upload .exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: bodhaka-quantum-summit-exe
+          path: release/*.exe
+
+      # 2) The Store .appx. Needs the Partner Center identity in electron-builder.yml,
+      # so it is allowed to fail without blocking the .exe artifact above.
+      - name: Build MSIX (Store)
+        continue-on-error: true
+        run: npx electron-builder --win appx
+
+      - name: Upload MSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: bodhaka-quantum-summit-msix
+          path: release/*.appx
+          if-no-files-found: ignore
