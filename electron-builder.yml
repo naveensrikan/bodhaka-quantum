@@ -39,11 +39,10 @@ nsis:
 # "Bodhaka Quantum Summit". publisher is the "Package/Identity/Publisher" CN string.
 # The .exe does NOT need these; only the Store .appx does.
 appx:
-  identityName: BuoyantWaveLearningTechnologiesLLP.BodhakaQuantumSummit
-  # Matches the self-signed certificate the CI workflow generates so the .msix can be
-  # sideloaded. For the Store, replace this with your Partner Center publisher ID.
-  publisher: CN=BuoyantWave Learning Technologies LLP
-  publisherDisplayName: BuoyantWave Learning Technologies LLP
+  # Real Microsoft Partner Center identity for "Bodhaka Quantum Summit".
+  identityName: BuoyantWaveLearningTechno.BodhakaQuantumSummit
+  publisher: CN=F4B9E2E3-2156-4114-9AE3-9011697860ED
+  publisherDisplayName: BuoyantWave Learning Technologies
   applicationId: BodhakaQuantumSummit
   backgroundColor: "#DBE7F3"
   showNameOnTiles: true

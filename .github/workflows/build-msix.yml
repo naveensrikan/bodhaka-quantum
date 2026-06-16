@@ -57,28 +57,17 @@ jobs:
           name: bodhaka-quantum-summit-exe
           path: release/*.exe
 
-      # 2) A self-signed, sideload-installable MSIX plus the certificate to trust it.
-      # Allowed to fail without blocking the .exe artifact above.
-      - name: Build signed MSIX
+      # 2) The Store MSIX. Unsigned on purpose: the Microsoft Store re-signs it on upload.
+      # Identity matches the Partner Center reservation in electron-builder.yml.
+      - name: Build MSIX (for the Microsoft Store)
         continue-on-error: true
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $subject = 'CN=BuoyantWave Learning Technologies LLP'
-          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject $subject -CertStoreLocation Cert:\CurrentUser\My -KeyExportPolicy Exportable -NotAfter (Get-Date).AddYears(5)
-          $pw = ConvertTo-SecureString -String 'summit-test-pw' -Force -AsPlainText
-          Export-PfxCertificate -Cert $cert -FilePath cert.pfx -Password $pw | Out-Null
-          Export-Certificate -Cert $cert -FilePath BodhakaQuantumSummit.cer | Out-Null
-          $env:CSC_LINK = (Resolve-Path cert.pfx).Path
-          $env:CSC_KEY_PASSWORD = 'summit-test-pw'
-          npx electron-builder --win appx --publish never
+        run: npx electron-builder --win appx --publish never
 
-      - name: Upload MSIX + certificate
+      - name: Upload MSIX
         uses: actions/upload-artifact@v4
         with:
           name: bodhaka-quantum-summit-msix
           path: |
             release/*.appx
             release/*.msix
-            BodhakaQuantumSummit.cer
           if-no-files-found: ignore
