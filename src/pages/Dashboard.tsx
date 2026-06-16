@@ -24,7 +24,7 @@ export default function Dashboard() {
         <div className="stat"><div className="n">{dash(local.programsRun ?? 0)}</div><div className="l">Programs run</div></div>
         <div className="stat"><div className="n">{dash(remote.jobs)}</div><div className="l">Jobs on IBM</div></div>
         <div className="stat"><div className="n">{dash(usage ? (usage.minutes_remaining ?? usage.remaining) : undefined)}</div><div className="l">Free time remaining</div></div>
-        <div className="stat"><div className="n">{dash(cfg.crn ? 'IBM Cloud' : (cfg.instance || (cfg.tokenSaved ? 'Open plan' : undefined)))}</div><div className="l">Plan / instance</div></div>
+        <div className="stat"><div className="n">{dash(cfg.instance || (cfg.tokenSaved ? 'Open plan' : undefined))}</div><div className="l">Plan / instance</div></div>
         <div className="stat"><div className="n">{dash(usage ? usage.cost : undefined)}</div><div className="l">Cost incurred</div></div>
       </div>
       {!cfg.tokenSaved && (

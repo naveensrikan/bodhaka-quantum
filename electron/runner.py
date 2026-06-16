@@ -1,49 +1,53 @@
 """Local Python helper for Bodhaka Quantum Summit.
 
-The app calls this for the two things user programs should NOT have to write by hand:
-saving the IBM account once, and reading usage for the dashboard. User programs
-themselves are run directly (python <file>), so the code stays standard Qiskit.
+The app passes IBM credentials through environment variables (QISKIT_IBM_TOKEN /
+QISKIT_IBM_CHANNEL / QISKIT_IBM_INSTANCE), which qiskit-ibm-runtime reads automatically.
+So this helper just confirms the connection and reads usage for the dashboard. User
+programs are run directly (python <file>) with the same environment, so their code
+stays standard Qiskit with no authentication lines.
 """
 import sys
 import json
 
 
-def save_account():
-    data = json.load(sys.stdin)
+def service():
     from qiskit_ibm_runtime import QiskitRuntimeService
-    kw = dict(channel="ibm_quantum_platform", token=data["token"], overwrite=True, set_as_default=True)
-    inst = (data.get("crn") or "").strip() or (data.get("instance") or "").strip()
-    if inst:
-        kw["instance"] = inst
-    QiskitRuntimeService.save_account(**kw)
-    print(json.dumps({"ok": True}))
+    return QiskitRuntimeService()
+
+
+def verify():
+    out = {}
+    try:
+        s = service()
+        try:
+            out["backends"] = len(list(s.backends()))
+        except Exception as e:
+            out["error"] = str(e)
+    except Exception as e:
+        out["error"] = str(e)
+    print(json.dumps(out, default=str))
 
 
 def usage():
     out = {}
     try:
-        from qiskit_ibm_runtime import QiskitRuntimeService
-        svc = QiskitRuntimeService()
+        s = service()
         try:
-            out["jobs"] = len(list(svc.jobs(limit=200)))
+            out["jobs"] = len(list(s.jobs(limit=200)))
         except Exception as e:
             out["jobs_error"] = str(e)
         try:
-            out["usage"] = svc.usage()
+            out["usage"] = s.usage()
         except Exception as e:
             out["usage_error"] = str(e)
-        try:
-            out["backends"] = [b.name for b in svc.backends()][:25]
-        except Exception as e:
-            out["backends_error"] = str(e)
     except Exception as e:
         out["error"] = str(e)
     print(json.dumps(out, default=str))
 
 
 cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-if cmd == "save-account":
-    save_account()
+if cmd == "verify":
+    verify()
 elif cmd == "usage":
     usage()
 else:
