@@ -1,9 +1,9 @@
 name: Build app (.exe + MSIX)
 
 on:
-  workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
