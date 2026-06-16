@@ -5,7 +5,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button className="modal-x" onClick={onClose} aria-label="Close">×</button>
-        <img src="logo.png" className="modal-logo" alt="Bodhaka" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+        <img src="bodhaka_logo.png" className="modal-logo" alt="Bodhaka" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
         <h2 style={{ textAlign: 'center' }}>Bodhaka Quantum Summit</h2>
         <p className="muted" style={{ textAlign: 'center', marginTop: 0 }}>Version 0.1.0</p>
         <p>

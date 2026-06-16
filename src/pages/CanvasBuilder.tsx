@@ -33,9 +33,9 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
     if (tgt >= nv) setTgt(Math.max(0, nv - 1))
   }
 
-  async function runSim() {
+  async function runChosen() {
     setBusy(true); setOut('Running...'); setErr(false)
-    const r = await ipc.run(toQiskit(circuit, 'local'), 'local')
+    const r = await ipc.run(toQiskit(circuit, target), target)
     setBusy(false); setErr(!r.ok)
     setOut(((r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')) || '(no output)')
   }
@@ -113,7 +113,7 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
         </div>
         <div className="codeview">{code}</div>
         <div className="term-bar" style={{ marginTop: 12 }}>
-          <button className="btn good" onClick={runSim} disabled={busy}>{busy ? 'Running...' : 'Run on simulator ▶'}</button>
+          <button className="btn good" onClick={runChosen} disabled={busy}>{busy ? 'Running...' : (target === 'ibm' ? 'Run on IBM Quantum ▶' : 'Run on simulator ▶')}</button>
           <button className="btn soft" onClick={() => onSend(code)}>Send to Terminal</button>
         </div>
         {out && <div className={'output' + (err ? ' err' : '')} style={{ marginTop: 12 }}>{out}</div>}

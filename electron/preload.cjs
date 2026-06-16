@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('summit', {
   agreeNotice: () => ipcRenderer.invoke('notice:agree'),
   getStorage: () => ipcRenderer.invoke('storage:get'),
   chooseStorage: () => ipcRenderer.invoke('storage:choose'),
+  pipInstall: (pkg) => ipcRenderer.invoke('pip:install', pkg),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 })

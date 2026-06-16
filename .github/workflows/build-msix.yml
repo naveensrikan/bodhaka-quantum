@@ -29,7 +29,7 @@ jobs:
           New-Item -ItemType Directory -Force resources | Out-Null
           tar -xzf py.tar.gz -C resources   # extracts to resources/python
           ./resources/python/python.exe -m pip install --upgrade pip
-          ./resources/python/python.exe -m pip install qiskit qiskit-ibm-runtime qiskit-aer
+          ./resources/python/python.exe -m pip install qiskit qiskit-ibm-runtime qiskit-aer matplotlib pylatexenc
 
       - name: Build renderer
         run: npm run build:renderer

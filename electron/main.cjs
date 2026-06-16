@@ -1,9 +1,17 @@
-const { app, BrowserWindow, ipcMain, shell, safeStorage, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, safeStorage, dialog, Tray, Menu, nativeImage } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
 
 const isDev = !app.isPackaged
+let tray = null
+
+// The window/taskbar/tray icon. Uses logo.png shipped with the renderer.
+function logoFile() {
+  const candidates = [path.join(__dirname, '..', 'dist', 'logo.png'), path.join(__dirname, '..', 'public', 'logo.png')]
+  for (const p of candidates) { try { if (fs.existsSync(p)) return p } catch {} }
+  return null
+}
 
 function readJson(p, fb) { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return fb } }
 function writeJson(p, o) { try { fs.mkdirSync(path.dirname(p), { recursive: true }) } catch {} ; fs.writeFileSync(p, JSON.stringify(o, null, 2)) }
@@ -27,6 +35,15 @@ const histPath = () => path.join(storeDir(), 'history.json')
 // process can actually open it on every machine, whatever the install directory is.
 function runnerScript() {
   return isDev ? path.join(__dirname, 'runner.py') : path.join(process.resourcesPath, 'runner.py')
+}
+
+// User-installed packages go here, a folder that is always writable (unlike the app's
+// own Python folder, which can be read-only). It is added to PYTHONPATH on every run,
+// so `pip install` works for any package, on any machine, including the Store build.
+function pkgDir() {
+  const d = path.join(app.getPath('userData'), 'pypackages')
+  try { fs.mkdirSync(d, { recursive: true }) } catch {}
+  return d
 }
 
 // Prefer the Python bundled inside the app (so a blank laptop needs nothing installed);
@@ -56,6 +73,8 @@ function decryptToken(cfg) {
 function ibmEnv() {
   const cfg = readJson(cfgPath(), {})
   const env = { ...process.env }
+  // Make user-installed packages importable by every program we run.
+  env.PYTHONPATH = pkgDir() + (env.PYTHONPATH ? path.delimiter + env.PYTHONPATH : '')
   if (cfg.tokenSaved) {
     const tok = decryptToken(cfg)
     if (tok) {
@@ -84,18 +103,36 @@ function runPython(args, { stdin, timeoutMs, env } = {}) {
 }
 
 function createWindow() {
+  const lf = logoFile()
   const win = new BrowserWindow({
     width: 1180, height: 780, minWidth: 960, minHeight: 620,
     backgroundColor: '#DBE7F3',
     title: 'Bodhaka Quantum Summit',
+    icon: lf || undefined,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false },
   })
   if (isDev) win.loadURL('http://localhost:5173')
   else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
 }
 
+function createTray() {
+  const lf = logoFile()
+  if (!lf) return
+  try {
+    tray = new Tray(nativeImage.createFromPath(lf).resize({ width: 18, height: 18 }))
+    tray.setToolTip('Bodhaka Quantum Summit')
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Show Bodhaka Quantum Summit', click: () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { w.show(); w.focus() } else createWindow() } },
+      { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() },
+    ]))
+    tray.on('click', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { w.isVisible() ? w.focus() : w.show() } })
+  } catch {}
+}
+
 app.whenReady().then(() => {
   createWindow()
+  createTray()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
@@ -120,10 +157,20 @@ ipcMain.handle('config:save', async (_e, cfg) => {
 })
 
 ipcMain.handle('run', async (_e, { code }) => {
+  const cfg = readJson(cfgPath(), {})
+  // Choosing IBM hardware without a saved key must fail loudly, not silently run local.
+  if (/QiskitRuntimeService/.test(code) && !cfg.tokenSaved) {
+    return { ok: false, stdout: '', stderr: 'This program runs on IBM Quantum, but no API key is configured.\nOpen Configuration and save your IBM Quantum API key first.' }
+  }
   const file = path.join(app.getPath('temp'), `summit_${Date.now()}.py`)
   fs.writeFileSync(file, code, 'utf8')
-  const res = await runPython([file], { env: ibmEnv() })
+  const env = ibmEnv()
+  env.MPLBACKEND = 'Agg'  // matplotlib runs headless so plotting code does not crash
+  const res = await runPython([file], { env })
   try { fs.unlinkSync(file) } catch {}
+  // If a package is missing, surface its name so the UI can offer to install it.
+  const mm = /ModuleNotFoundError: No module named '([^']+)'/.exec(res.stderr || '')
+  res.missing = mm ? mm[1].split('.')[0] : ''
   const s = readJson(statsPath(), { programsRun: 0 }); s.programsRun = (s.programsRun || 0) + 1; s.lastRun = new Date().toISOString(); writeJson(statsPath(), s)
   const target = /QiskitRuntimeService/.test(code) ? 'IBM Quantum' : 'Local simulator'
   const title = (code.split('\n').map((l) => l.trim()).find((l) => l && !l.startsWith('#') && !l.startsWith('from ') && !l.startsWith('import ')) || 'Program').slice(0, 70)
@@ -152,4 +199,12 @@ ipcMain.handle('storage:choose', async () => {
   writeJson(locPath(), { dir: r.filePaths[0] })
   return { dir: r.filePaths[0] }
 })
+// Install extra Python packages into the app's bundled Python (it lives in a user
+// writable folder for the .exe build). matplotlib + pylatexenc ship by default.
+ipcMain.handle('pip:install', async (_e, pkg) => {
+  const name = String(pkg || '').trim()
+  if (!name || !/^[A-Za-z0-9_.\-\[\]=<>!~ ]+$/.test(name)) return { ok: false, stdout: '', stderr: 'Enter one or more valid package names.' }
+  return await runPython(['-m', 'pip', 'install', '--target', pkgDir(), ...name.split(/\s+/)], { timeoutMs: 600000, env: process.env })
+})
+
 ipcMain.handle('open-external', (_e, url) => { if (url) shell.openExternal(url) })

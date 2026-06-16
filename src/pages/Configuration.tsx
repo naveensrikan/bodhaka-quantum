@@ -7,6 +7,10 @@ export default function Configuration({ onShowNotice }: { onShowNotice: () => vo
   const [status, setStatus] = useState<{ kind: string; msg: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [dir, setDir] = useState('')
+  const [pkg, setPkg] = useState('')
+  const [pkgBusy, setPkgBusy] = useState(false)
+  const [pkgOut, setPkgOut] = useState('')
+  const [pkgErr, setPkgErr] = useState(false)
 
   useEffect(() => { ipc.getConfig().then(setCfg); ipc.getStorage().then((s) => setDir(s.dir)) }, [])
 
@@ -21,6 +25,14 @@ export default function Configuration({ onShowNotice }: { onShowNotice: () => vo
   }
 
   async function choose() { const s = await ipc.chooseStorage(); setDir(s.dir) }
+
+  async function install() {
+    if (!pkg.trim()) return
+    setPkgBusy(true); setPkgOut('Installing...'); setPkgErr(false)
+    const r = await ipc.pipInstall(pkg.trim())
+    setPkgBusy(false); setPkgErr(!r.ok)
+    setPkgOut(((r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')).slice(-1200) || (r.ok ? 'Done.' : 'Failed.'))
+  }
 
   return (
     <div>
@@ -53,11 +65,22 @@ export default function Configuration({ onShowNotice }: { onShowNotice: () => vo
           </div>
           <div className="hint">Where your settings and encrypted key are stored on this computer.</div>
         </div>
-        <div className="row">
+
+        <div className="save-area">
           <button className="btn" onClick={save} disabled={busy}>{busy ? 'Saving...' : 'Save & connect'}</button>
           {cfg.tokenSaved && <span className="statusline ok">Key saved (encrypted) ✓</span>}
+          {status && <div className={'statusline ' + status.kind}>{status.msg}</div>}
         </div>
-        {status && <div className={'statusline ' + status.kind}>{status.msg}</div>}
+
+        <div className="field" style={{ marginTop: 8, borderTop: '1px solid var(--line)', paddingTop: 18 }}>
+          <label>Install a Python package (advanced)</label>
+          <div className="row">
+            <input value={pkg} onChange={(e) => setPkg(e.target.value)} placeholder="e.g. pandas" style={{ flex: 1 }} />
+            <button className="btn soft" onClick={install} disabled={pkgBusy}>{pkgBusy ? 'Installing...' : 'Install'}</button>
+          </div>
+          <div className="hint">Qiskit, Aer, and matplotlib are already included. Use this to add other packages to the app's Python.</div>
+          {pkgOut && <div className={'output' + (pkgErr ? ' err' : '')} style={{ marginTop: 10 }}>{pkgOut}</div>}
+        </div>
       </div>
     </div>
   )

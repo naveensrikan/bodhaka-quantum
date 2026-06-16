@@ -1,6 +1,6 @@
 // Thin wrapper over the preload bridge. Falls back to stubs when run outside Electron.
 export type Config = { username: string; instance: string; tokenSaved: boolean; token?: string }
-export type RunResult = { ok: boolean; stdout: string; stderr: string }
+export type RunResult = { ok: boolean; stdout: string; stderr: string; missing?: string }
 export type SaveResult = { ok: boolean; verified: boolean; error: string; config: Config }
 export type Stats = { local: { programsRun: number; lastRun?: string }; cfg: any; remote: any }
 export type HistoryItem = { t: string; target: string; ok: boolean; title: string }
@@ -27,5 +27,7 @@ export const ipc = {
     native ? native.getStorage() : Promise.resolve({ dir: '(app data folder)' }),
   chooseStorage: (): Promise<{ dir: string }> =>
     native ? native.chooseStorage() : Promise.resolve({ dir: '(app data folder)' }),
+  pipInstall: (pkg: string): Promise<RunResult> =>
+    native ? native.pipInstall(pkg) : Promise.resolve({ ok: true, stdout: '[preview] pip install runs inside the app.\n', stderr: '' }),
   openExternal: (url: string) => { native ? native.openExternal(url) : window.open(url, '_blank') },
 }

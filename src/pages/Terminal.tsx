@@ -5,13 +5,24 @@ export default function Terminal({ code, setCode, example }: { code: string; set
   const [out, setOut] = useState('')
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [missing, setMissing] = useState('')
 
   async function run() {
-    setBusy(true); setOut('Running...'); setErr(false)
+    setBusy(true); setOut('Running...'); setErr(false); setMissing('')
     const r = await ipc.run(code, 'terminal')
     setBusy(false)
     setErr(!r.ok)
+    setMissing(r.missing || '')
     setOut(((r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')) || '(no output)')
+  }
+
+  async function installAndRun() {
+    const pkg = missing
+    setBusy(true); setOut(`Installing ${pkg}...`); setErr(false)
+    const ir = await ipc.pipInstall(pkg)
+    if (!ir.ok) { setBusy(false); setErr(true); setOut(((ir.stdout || '') + '\n' + (ir.stderr || '')).slice(-1500)); return }
+    setMissing('')
+    await run()
   }
 
   return (
@@ -21,6 +32,7 @@ export default function Terminal({ code, setCode, example }: { code: string; set
       <div className="term-bar">
         <button className="btn good" onClick={run} disabled={busy}>{busy ? 'Running...' : 'Run ▶'}</button>
         <button className="btn soft" onClick={() => setCode(example)}>Reset example</button>
+        {missing && <button className="btn" onClick={installAndRun} disabled={busy}>Install {missing} and run again</button>}
       </div>
       <div className={'output' + (err ? ' err' : '')}>{out || 'Output will appear here.'}</div>
     </div>
