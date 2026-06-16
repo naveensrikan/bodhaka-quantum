@@ -8,6 +8,7 @@ export default function Terminal({ code, setCode }: { code: string; setCode: (c:
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
   const [missing, setMissing] = useState('')
+  const [images, setImages] = useState<string[]>([])
 
   function switchTarget(t: 'local' | 'ibm') {
     setTarget(t)
@@ -15,12 +16,14 @@ export default function Terminal({ code, setCode }: { code: string; setCode: (c:
   }
 
   async function run() {
-    setBusy(true); setOut('Running...'); setErr(false); setMissing('')
+    setBusy(true); setOut('Running...'); setErr(false); setMissing(''); setImages([])
     const r = await ipc.run(code, target)
     setBusy(false)
     setErr(!r.ok)
     setMissing(r.missing || '')
-    setOut(((r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')) || '(no output)')
+    setImages(r.images || [])
+    const text = (r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')
+    setOut(text || (r.images && r.images.length ? '(figure below)' : '(no output)'))
   }
 
   async function installAndRun() {
@@ -49,6 +52,7 @@ export default function Terminal({ code, setCode }: { code: string; setCode: (c:
         {missing && <button className="btn" onClick={installAndRun} disabled={busy}>Install {missing} and run again</button>}
       </div>
       <div className={'output' + (err ? ' err' : '')}>{out || 'Output will appear here.'}</div>
+      {images.map((b, i) => <img key={i} className="run-img" src={`data:image/png;base64,${b}`} alt="figure" />)}
     </div>
   )
 }

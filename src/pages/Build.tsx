@@ -21,9 +21,13 @@ export default function Build() {
           <span className="seg-knob" />
         </div>
       </div>
-      {mode === 'terminal'
-        ? <Terminal code={code} setCode={setCode} />
-        : <CanvasBuilder onSend={(c) => { setCode(c); setMode('terminal') }} />}
+      {/* Both stay mounted so a running program survives flipping the toggle. */}
+      <div style={{ display: mode === 'terminal' ? 'block' : 'none' }}>
+        <Terminal code={code} setCode={setCode} />
+      </div>
+      <div style={{ display: mode === 'canvas' ? 'block' : 'none' }}>
+        <CanvasBuilder onSend={(c) => { setCode(c); setMode('terminal') }} />
+      </div>
     </div>
   )
 }

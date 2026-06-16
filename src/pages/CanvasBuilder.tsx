@@ -13,6 +13,7 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
   const [out, setOut] = useState('')
   const [err, setErr] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [images, setImages] = useState<string[]>([])
   const idRef = useRef(1)
   const [tg, setTg] = useState('cx')
   const [ctrl, setCtrl] = useState(0)
@@ -34,10 +35,12 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
   }
 
   async function runChosen() {
-    setBusy(true); setOut('Running...'); setErr(false)
+    setBusy(true); setOut('Running...'); setErr(false); setImages([])
     const r = await ipc.run(toQiskit(circuit, target), target)
     setBusy(false); setErr(!r.ok)
-    setOut(((r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')) || '(no output)')
+    setImages(r.images || [])
+    const text = (r.stdout || '') + (r.stderr ? '\n' + r.stderr : '')
+    setOut(text || (r.images && r.images.length ? '(figure below)' : '(no output)'))
   }
 
   return (
@@ -105,7 +108,7 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
       <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><input type="checkbox" checked={measureAll} onChange={(e) => setMeasureAll(e.target.checked)} /> measure_all</label>
-          <button className="textbtn" onClick={() => { setOps([]); setOut('') }}>Clear</button>
+          <button className="textbtn" onClick={() => { setOps([]); setOut(''); setImages([]) }}>Clear</button>
         </div>
         <div className="row" style={{ gap: 16, marginBottom: 12 }}>
           <label className="row" style={{ gap: 6 }}><input type="radio" checked={target === 'local'} onChange={() => setTarget('local')} /> Local simulator</label>
@@ -117,6 +120,7 @@ export default function CanvasBuilder({ onSend }: { onSend: (code: string) => vo
           <button className="btn soft" onClick={() => onSend(code)}>Send to Terminal</button>
         </div>
         {out && <div className={'output' + (err ? ' err' : '')} style={{ marginTop: 12 }}>{out}</div>}
+        {images.map((b, i) => <img key={i} className="run-img" src={`data:image/png;base64,${b}`} alt="figure" />)}
         {target === 'ibm' && <p className="muted" style={{ marginTop: 10, fontSize: '.8rem' }}>IBM runs use your saved account from Configuration and submit to a real device queue.</p>}
       </div>
     </div>

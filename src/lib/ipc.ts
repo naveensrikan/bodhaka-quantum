@@ -1,6 +1,6 @@
 // Thin wrapper over the preload bridge. Falls back to stubs when run outside Electron.
 export type Config = { username: string; instance: string; tokenSaved: boolean; token?: string }
-export type RunResult = { ok: boolean; stdout: string; stderr: string; missing?: string }
+export type RunResult = { ok: boolean; stdout: string; stderr: string; missing?: string; images?: string[] }
 export type SaveResult = { ok: boolean; verified: boolean; error: string; config: Config }
 export type Stats = { local: { programsRun: number; lastRun?: string }; cfg: any; remote: any }
 export type HistoryItem = { t: string; target: string; ok: boolean; title: string; code?: string; output?: string }

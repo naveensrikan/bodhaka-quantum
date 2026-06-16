@@ -12,6 +12,7 @@ import json
 import importlib
 import traceback
 import re
+import base64
 import contextlib
 
 # Make user-installed packages importable.
@@ -55,7 +56,19 @@ def run_program(req):
         m = re.search(r"No module named '([^']+)'", text)
         if m:
             missing = m.group(1).split(".")[0]
-    return {"id": req.get("id"), "ok": ok, "stdout": text if ok else "", "stderr": "" if ok else text, "missing": missing}
+    # Capture any matplotlib figures the program produced (incl. qc.draw("mpl"))
+    # so they can be shown as images instead of being silently lost.
+    images = []
+    try:
+        import matplotlib.pyplot as plt
+        for num in plt.get_fignums():
+            b = io.BytesIO()
+            plt.figure(num).savefig(b, format="png", bbox_inches="tight", dpi=110)
+            images.append(base64.b64encode(b.getvalue()).decode("ascii"))
+        plt.close("all")
+    except BaseException:
+        pass
+    return {"id": req.get("id"), "ok": ok, "stdout": text if ok else "", "stderr": "" if ok else text, "missing": missing, "images": images}
 
 
 def warm():

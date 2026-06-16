@@ -50,6 +50,7 @@ body { margin: 0; font-family: var(--font); color: var(--ink-2); background: var
 .term-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .output { font-family: var(--mono); font-size: .84rem; white-space: pre-wrap; word-break: break-word; background: var(--cream); border-radius: var(--r-md); padding: 14px 16px; min-height: 70px; color: var(--ink-2); }
 .output.err { background: #fbe6e3; color: var(--bad); }
+.run-img { display: block; max-width: 100%; margin-top: 10px; border-radius: var(--r-md); background: #fff; padding: 10px; box-shadow: var(--shadow-sm); }
 
 .cv { display: grid; grid-template-columns: 1fr 380px; gap: 18px; align-items: start; }
 @media (max-width: 1040px) { .cv { grid-template-columns: 1fr; } }
